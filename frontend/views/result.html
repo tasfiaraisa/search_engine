@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search Results</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <img src="/static/logo.png" alt="Search Engine Logo"/>
+            <h1>Seek it, Find it</h1>
+        </div>
+    </header>
+
+    <main>
+        <section class="results-section">
+            <h2>Search for "{{ keywords }}"</h2>
+
+            <!--Table for word counts-->
+            <table name="results" id="results" border="1">
+                <thead>
+                    <tr>
+                        <th>Word</th>
+                        <th>Count</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    % for word, count in word_count.items():
+                    <tr>
+                        <td>{{ word }}</td>
+                        <td>{{ count }}</td>
+                    </tr>
+                    % end
+                </tbody>                
+            </table>               
+        </section>
+    </main>
+
+</body>
+</html>
