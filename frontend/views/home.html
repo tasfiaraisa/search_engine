@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Seekr</title>
+    <title>Seek</title>
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
@@ -21,10 +21,28 @@
                 <button type="submit">Search</button>
             </form>
         </section>
+
+        <section class="results-section">
+            <!--Table for top 20 searched keywords-->
+            <h2>Top 20 Most Popular Keywords</h2>
+            <table name="history" id="history" border="1">
+                <thead>
+                    <tr>
+                        <th>Keyword</th>
+                        <th>Total Searches</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    % for keyword, total_searches in top_keywords.items():
+                    <tr>
+                        <td>{{ keyword }}</td>
+                        <td>{{ total_searches }}</td>
+                    </tr>
+                    % end
+                </tbody>
+            </table> 
+        </section>
     </main>
 
-    <footer>
-        <p>&copy; 2024 Seekr. All rights reserved.</p>
-    </footer>
 </body>
 </html>
