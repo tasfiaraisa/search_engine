@@ -10,10 +10,9 @@ Before you start testing, make sure you have the following installed:
 
 Python 3.x
 
-Required Python libraries: bottle, requests, beautifulsoup4, urllib3
-
 Testing the Front-End
 Navigate to the front-end folder:
+
 cd frontend
 
 Run app.py
@@ -25,23 +24,9 @@ You should now see the search engine interface, where you can input keywords to 
 
 Testing the Crawler (Back-End)
 
-1. Start the Local HTML Test Server
-Navigate to the test HTML files directory:
+Go to backend folder and run the test.py script to crawl the test URLs:
 
-cd backend/test_html_files
-
-Start a local server to serve the HTML files:
-
-python3 -m http.server 8000
-
-This will start a local server at http://localhost:8000, which serves the test HTML files.
-
-3. Run the Crawler and Check the Inverted Index
-Navigate back to the backend folder:
-
-cd ../
-
-Run the test.py script to crawl the test URLs:
+cd backend
 
 python3 test.py
 
