@@ -55,4 +55,4 @@ def search():
     #Render the result page, passing the keywords and word_counts
     return template('result', keywords = keywords, word_count=word_counts)
 
-app.run(host='localhost', port=8080, debug=True)
+app.run(host='localhost', port=8083, debug=True)
