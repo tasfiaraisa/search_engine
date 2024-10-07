@@ -128,6 +128,7 @@ class crawler(object):
         """A function that pretends to insert a url into a document db table
         and then returns that newly inserted document's id."""
         ret_id = self._mock_next_doc_id
+        self.document_index[ret_id] = url  # Add the document ID -> URL mapping to the document index
         self._mock_next_doc_id += 1
         return ret_id
 
@@ -170,7 +171,6 @@ class crawler(object):
         #       the rest to their defaults.
 
         doc_id = self._mock_insert_document(url)
-        self.document_index[doc_id] = url  # Add the document ID -> URL mapping to the document index
         self._doc_id_cache[url] = doc_id
         return doc_id
 
