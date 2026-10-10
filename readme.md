@@ -50,8 +50,81 @@ flowchart TD
 
 ## Running Locally
 
-### 1. Clone the repository
+Running Locally
 
-```bash
-git clone YOUR_REPOSITORY_URL
-cd search_eng
+1. Clone the repository
+
+git clone https://github.com/tasfiaraisa/search_engine.git
+cd search_engine
+
+2. Set up the Python environment
+
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+
+3. Configure PostgreSQL
+
+Create a PostgreSQL database named search_engine and initialize the required tables using backend/schema.sql.
+
+4. Run the crawler
+
+cd backend
+python crawler.py
+
+5. Start the frontend
+
+From the project root:
+
+cd frontend
+python app.py
+
+Open http://localhost:8080 in your browser.
+
+AWS Deployment & Performance Benchmarking
+
+Developed AWS EC2 infrastructure automation using Boto3, Paramiko, and SCP, including instance provisioning, security group configuration, Elastic IP allocation, and SSH-based file transfer.
+
+Benchmarked an earlier EC2-hosted version of the application using ApacheBench, with system monitoring through dstat and iostat.
+
+Metric
+
+Result
+
+HTTP Requests
+
+1,000
+
+Concurrent Clients
+
+20
+
+Throughput
+
+982.89 requests/sec
+
+Mean Request Time
+
+20.348 ms
+
+Failed Requests
+
+0
+
+Memory Usage
+
+~167–168 MB
+
+The benchmark reflects an earlier HTTP homepage workload, not the current PostgreSQL-backed search implementation.
+
+View the full performance report
+
+Future Improvements
+
+Expand crawling coverage.
+
+Improve search relevance and result descriptions.
+
+Optimize database queries for larger indexes.
+
+Deploy the current application publicly.
