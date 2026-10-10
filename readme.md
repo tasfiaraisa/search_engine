@@ -81,50 +81,23 @@ python app.py
 
 Open http://localhost:8080 in your browser.
 
-AWS Deployment & Performance Benchmarking
 
-Developed AWS EC2 infrastructure automation using Boto3, Paramiko, and SCP, including instance provisioning, security group configuration, Elastic IP allocation, and SSH-based file transfer.
+AWS Deployment & Performance Testing
 
-Benchmarked an earlier EC2-hosted version of the application using ApacheBench, with system monitoring through dstat and iostat.
+Automated AWS EC2 infrastructure provisioning using Python, Boto3, Paramiko, and SCP, including instance configuration, Elastic IP allocation, and remote file transfer.
 
-Metric
+Performed HTTP load testing on an earlier EC2-hosted version using ApacheBench, with resource monitoring through dstat and iostat.
 
-Result
+Benchmark Highlights
 
-HTTP Requests
+982.89 requests/second throughput
 
-1,000
+1,000 HTTP requests with 20 concurrent clients
 
-Concurrent Clients
+0 failed requests
 
-20
+20.348 ms mean response time
 
-Throughput
+View Full Performance Report
 
-982.89 requests/sec
-
-Mean Request Time
-
-20.348 ms
-
-Failed Requests
-
-0
-
-Memory Usage
-
-~167–168 MB
-
-The benchmark reflects an earlier HTTP homepage workload, not the current PostgreSQL-backed search implementation.
-
-View the full performance report
-
-Future Improvements
-
-Expand crawling coverage.
-
-Improve search relevance and result descriptions.
-
-Optimize database queries for larger indexes.
-
-Deploy the current application publicly.
+Note: Benchmarks reflect an earlier EC2-hosted HTTP workload, not the current PostgreSQL search implementation.
