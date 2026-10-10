@@ -1,0 +1,49 @@
+"Performance and Resource Utilization Report"
+
+
+1. Benchmark Test Results (ApacheBench)
+Command: ab -n 1000 -c 20 http://18.233.193.248:8080/
+
+Summary
+Number of Requests (n): 1000
+Concurrency Level (c): 20
+Total Time Taken: 1.017 seconds
+Maximum number of connections that can be handled by the server before any connection
+drops: 20
+Maximum requests per Second (RPS): 982.89 [#/sec] (mean)
+Time per Request (Average): 20.348 ms (mean per individual request), 1.017 ms (mean across all concurrent requests)
+Transfer Rate: 1356.28 KB/sec
+Failed Requests: 0
+Connection Times (ms)
+Minimum: 3 ms
+Mean: 6 ms
+Median: 6 ms
+99th Percentile: 7 ms
+Maximum: 8 ms
+Observations
+The server handled all 1000 requests successfully, with no failed requests.
+Achieved a high Requests per Second (RPS) rate, indicating strong server performance.
+Low response time variability, with most requests completing in 6-7 ms.
+
+
+
+
+2. Resource Utilization Metrics (from dstat and iostat)
+
+CPU Usage
+Average User CPU: ~1%
+Average System CPU: ~1%
+Idle: Generally high, fluctuating from 70% to 100%.
+Steal Time: Varied between 15-20%, indicating moderate virtualization overhead typical for cloud environments.
+
+Memory Usage
+Used Memory: ~167-168 MB
+Free Memory: ~455-456 MB
+Buffered Memory: ~28.7 MB
+Cached Memory: ~298 MB
+Observations: Memory usage remained low, with ample free memory available for additional load.
+
+Disk I/O Usage
+Disk Reads: Minimal, with occasional peaks (e.g., 806 KB at the beginning).
+Disk Writes: Consistently low, with only a few small spikes.
+Observations: Disk activity was minimal, suggesting low I/O demand under this load.

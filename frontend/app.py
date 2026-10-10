@@ -1,58 +1,115 @@
 from bottle import Bottle, template, static_file, request, redirect, response
+import bottle
+#from bottle import mark_safe
+from oauth2client.client import OAuth2WebServerFlow, flow_from_clientsecrets
+from googleapiclient.errors import HttpError
+from beaker.middleware import SessionMiddleware
 import time
+import httplib2
+import traceback
+import psycopg
+from html import escape
+from pathlib import Path
 
+BASE_DIR = Path(__file__).resolve().parent
+bottle.TEMPLATE_PATH.insert(0, str(BASE_DIR / "views"))
+
+# Initialize the Bottle app
 app = Bottle()
 
-#Global dictionary
-global_keywords = {}
-keywords = None
-top_keywords = {}
-word_counts = {}
 
+# Session management configuration
+session_opts = {
+    'session.type': 'memory',
+    'session.auto': True
+}
 
-@app.route('/static/<filename>')
+@app.route('/static/<filename:path>')
 def serve_static(filename):
-    return static_file(filename, root='./static')
+    return static_file(filename, root=str(BASE_DIR / "static"))
 
-@app.route('/', method=['GET'])
-def home():
-    response.set_header('Cache-Control', 'max-age= 0')
-    global top_keywords
-    #Check if the 'keywords' parameter is in the query
-    if 'keywords' in request.query:
-        #Get the search query from the form
-        global keywords
-        keywords = request.query.keywords
-
-        global word_counts
-        word_counts = {}
-        #Split the keywords string into individual words and count occurrences
-        word_list = keywords.lower().split()
-        for word in word_list:
-            if word in word_counts:
-                word_counts[word] += 1
-            else:
-                word_counts[word] = 1
-
-            #Update the global_keyword counts
-            if word in global_keywords:
-                global_keywords[word] += 1
-            else:
-                global_keywords[word] = 1
-
-        #Sort the global_keywords by count and get the top 20
-        top_keywords = dict(sorted(global_keywords.items(), key=lambda item: item[1], reverse=True)[:20])
-        redirect('/search')
-       
-    #If it's a GET, just render the home template
-    rendered_template = template('home', top_keywords=top_keywords)
-    return rendered_template
-
+# Search route - Fetch URLs based on PageRank scores
 @app.route('/search', method='GET')
 def search():
-    global keywords
-    global word_counts
-    #Render the result page, passing the keywords and word_counts
-    return template('result', keywords = keywords, word_count=word_counts)
+    keywords = request.query.get('keywords', '').strip().lower()
 
-app.run(host='localhost', port=8083, debug=True)
+    try:
+        page = max(1, int(request.query.get('page', 1)))
+    except ValueError:
+        page = 1
+
+    results_per_page = 5
+    offset = (page - 1) * results_per_page
+
+    # Split the search query into individual words
+    search_terms = keywords.split()
+
+    if not search_terms:
+        return template(
+            'result',
+            table_rows='',
+            total_results=0,
+            keywords=keywords,
+            page=page,
+            pages=0
+        )
+
+    # Match any search term in the inverted index.
+    # Use PageRank to rank matching documents.
+    search_query = """
+        SELECT
+            d.url,
+            COALESCE(p.score, 0) AS pagerank_score,
+            COUNT(DISTINCT l.word) AS matching_words
+        FROM inverted_index i
+        JOIN lexicon l ON i.word_id = l.id
+        JOIN document_index d ON i.document_id = d.id
+        LEFT JOIN pagerank p ON p.document_id = d.id
+        WHERE l.word = ANY(%s)
+          AND d.url <> ''
+        GROUP BY d.id, d.url, p.score
+        ORDER BY matching_words DESC, pagerank_score DESC
+        LIMIT %s OFFSET %s
+    """
+
+    count_query = """
+        SELECT COUNT(DISTINCT i.document_id)
+        FROM inverted_index i
+        JOIN lexicon l ON i.word_id = l.id
+        JOIN document_index d ON i.document_id = d.id
+        WHERE l.word = ANY(%s)
+          AND d.url <> ''
+    """
+
+    with psycopg.connect(dbname="search_engine") as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                search_query,
+                (search_terms, results_per_page, offset)
+            )
+            query_result = cursor.fetchall()
+
+            cursor.execute(count_query, (search_terms,))
+            total_results = cursor.fetchone()[0]
+
+    pages = (total_results + results_per_page - 1) // results_per_page
+
+    table_rows = ''
+
+    for idx, (url, score, matching_words) in enumerate(query_result):
+        rank = idx + 1 + offset
+
+        safe_url = escape(url, quote=True)
+
+        # Display a readable title based on the URL.
+        from urllib.parse import urlparse, unquote
+
+        parsed = urlparse(url)
+        page_name = unquote(parsed.path.rstrip('/').split('/')[-1])
+
+        if page_name:
+            display_title = page_name.replace('_', ' ').replace('-', ' ')
+        else:
+            display_title = parsed.netloc
+
+        safe_title = escape

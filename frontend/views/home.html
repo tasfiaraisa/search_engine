@@ -1,48 +1,25 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Seek</title>
-    <link rel="stylesheet" href="/static/style.css">
+    <title>Seekr — Seek it, Find it</title>
+    <link rel="stylesheet" href="/static/style.css?v=3">
 </head>
-<body>
-    <header>
-        <div class="logo">
-            <img src="/static/logo.png" alt="Search Engine Logo"/>
-            <h1>Seek it, Find it</h1>
+
+<body class="home-page">
+
+    <main class="home-container">
+
+        <div class="home-logo">
+            <img src="/static/logo.png" alt="Seekr Logo">
+            <p class="tagline">Seek it, Find it.</p>
         </div>
-    </header>
 
-    <main>
-        <section class="search-section">
-            <form action="/" method="GET">
-                <input type="text" name="keywords" id="search-box" placeholder="Enter your search query..." required>
-                <button type="submit">Search</button>
-            </form>
-        </section>
+        <form action="/search" method="GET" class="search-form">
+            <div class="search-input-wrapper">
+                <span class="search-icon" aria-hidden="true">⌕</span>
 
-        <section class="results-section">
-            <!--Table for top 20 searched keywords-->
-            <h2>Top 20 Most Popular Keywords</h2>
-            <table name="history" id="history" border="1">
-                <thead>
-                    <tr>
-                        <th>Keyword</th>
-                        <th>Total Searches</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    % for keyword, total_searches in top_keywords.items():
-                    <tr>
-                        <td>{{ keyword }}</td>
-                        <td>{{ total_searches }}</td>
-                    </tr>
-                    % end
-                </tbody>
-            </table> 
-        </section>
-    </main>
-
-</body>
-</html>
+                <input type="search" name="keywords" id="search-box" placeholder="What are you curious about?"
+                    aria

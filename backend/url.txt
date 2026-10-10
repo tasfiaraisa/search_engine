@@ -1,5 +1,2 @@
-http://httpbin.org/html
-http://www.example.org
-
-
-
+https://docs.python.org/3/tutorial/
+https://www.eecg.to

@@ -1,0 +1,13 @@
+# Backend (crawler/indexer)
+beautifulsoup4
+requests
+urllib3
+numpy
+
+# Frontend (Bottle web app + OAuth)
+bottle
+beaker
+google-api-python-client
+oauth2client
+httplib2
+jinja2

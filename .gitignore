@@ -1,0 +1,22 @@
+# Private keys and credentials
+*.pem
+.env
+.env.*
+
+# Python virtual environment
+.venv/
+venv/
+
+# Python generated files
+__pycache__/
+*.pyc
+
+# Local database files
+*.db
+*.sqlite3
+
+# macOS files
+.DS_Store
+
+# OAuth credentials
+frontend/client_secret.json

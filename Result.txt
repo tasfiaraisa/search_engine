@@ -1,0 +1,54 @@
+Results of test_database.py showing results from pagerank 
+
+Lexicon:
+(1, 'computer')
+(2, 'engineering')
+(3, 'group')
+(4, 'university')
+(5, 'toronto')
+(6, 'github')
+(7, 'ece326')
+(8, 'lab')
+(9, '1')
+(10, 'this')
+(11, 'root')
+(12, 'page')
+(13, 'for')
+(14, 'test')
+(15, 'crawler')
+(16, '2')
+
+Document Index:
+(1, '')
+(2, 'https://www.eecg.toronto.edu/')
+(3, 'https://github.com/baochunli/eecg')
+(4, 'http://localhost:8080')
+(5, 'http://localhost:8080/page1.html')
+(6, 'http://localhost:8080/page2.html')
+
+Inverted Index:
+(1, 2, None)
+(2, 2, None)
+(3, 2, None)
+(4, 2, None)
+(5, 2, None)
+(6, 2, None)
+(7, 4, None)
+(8, 4, None)
+(9, 4, None)
+(10, 4, None)
+(11, 4, None)
+(12, 4, None)
+(13, 4, None)
+(14, 4, None)
+(15, 4, None)
+(16, 4, None)
+
+PageRank Scores:
+(2, 0.17140203493918452)
+(3, 0.320416009760252)
+(4, 0.17140203493918452)
+(5, 0.24590902234971826)
+(6, 0.24590902234971826)
+
+

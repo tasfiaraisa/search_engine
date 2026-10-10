@@ -24,6 +24,8 @@ from bs4 import BeautifulSoup, Tag
 from collections import defaultdict
 import re
 import requests
+from database import get_connection
+import numpy as np
 
 
 def attr(elem, attr):
@@ -51,11 +53,18 @@ class crawler(object):
         self._url_queue = []
         self._doc_id_cache = {}
         self._word_id_cache = {}
+        self.db_conn = db_conn
+        self.cursor = self.db_conn.cursor()
+        self.graph = defaultdict(list)
+        self._create_tables()
         
          # Initialize the data structures
         self.lexicon = {}  
         self.document_index = {}  
         self.inverted_index = defaultdict(set)  # word_id -> set(doc_ids)
+        self.visited = set()
+        self.queued_urls = set()
+        self.max_depth = 1
 
         # functions to call when entering and exiting specific tags
         self._enter = defaultdict(lambda *a, **ka: self._visit_ignore)
@@ -115,14 +124,89 @@ class crawler(object):
         self._font_size = 0
         self._curr_words = None
 
-        # get all urls into the queue
+        # Get valid seed URLs into the queue
         try:
             with open(url_file, 'r') as f:
                 for line in f:
-                    self._url_queue.append((self._fix_url(line.strip(), ""), 0))
-        except IOError:
-            pass
+                    url = line.strip()
 
+                    # Skip empty lines and invalid URLs
+                    if not url or not url.startswith(("http://", "https://")):
+                        continue
+
+                    fixed_url = self._fix_url(url, "")
+
+                    # Avoid duplicate seed URLs
+                    if fixed_url not in [item[0] for item in self._url_queue]:
+                        self._url_queue.append((fixed_url, 0))
+                        self.queued_urls.add(fixed_url)
+
+        except IOError:
+            print(f"Could not open URL file: {url_file}")
+
+            
+            
+    def _create_tables(self):
+        """Database tables are created by schema.sql."""
+        pass
+        
+        
+    
+    def save_to_db(self):
+        """Save crawled words, documents, and inverted index to PostgreSQL."""
+
+        # Save words
+        for word_id, word in self.lexicon.items():
+            self.cursor.execute(
+                """
+                INSERT INTO lexicon (id, word)
+                VALUES (%s, %s)
+                ON CONFLICT DO NOTHING
+                """,
+                (word_id, word)
+            )
+
+        # Save documents
+        for doc_id, url in self.document_index.items():
+            self.cursor.execute(
+                """
+                INSERT INTO document_index (id, url)
+                VALUES (%s, %s)
+                ON CONFLICT DO NOTHING
+                """,
+                (doc_id, url)
+            )
+
+        # Save inverted index
+        for word_id, doc_ids in self.inverted_index.items():
+            for doc_id in doc_ids:
+                self.cursor.execute(
+                    """
+                    INSERT INTO inverted_index (word_id, document_id)
+                    VALUES (%s, %s)
+                    ON CONFLICT DO NOTHING
+                    """,
+                    (word_id, doc_id)
+                )
+
+        self.db_conn.commit()
+        print("Crawler data saved to PostgreSQL!")
+        
+    def compute_and_store_pagerank(self):
+        # Convert graph to links
+        links = []
+        for src, dsts in self.graph.items():
+            for dst in dsts:
+                links.append((src, dst))
+        
+        # Compute PageRank
+        pagerank_scores = page_rank(links)
+
+        # Store PageRank in the database
+        store_pagerank_scores(self.db_conn, pagerank_scores)
+
+        
+        
     # TODO remove me in real version
     def _mock_insert_document(self, url):
         """A function that pretends to insert a url into a document db table
@@ -141,37 +225,61 @@ class crawler(object):
         return ret_id
 
     def word_id(self, word):
-        """Get the word id of some specific word."""
+        """Get or create a word ID in PostgreSQL."""
+
         if word in self._word_id_cache:
             return self._word_id_cache[word]
 
-        # TODO: 1) add the word to the lexicon, if that fails, then the
-        #          word is in the lexicon
-        #       2) query the lexicon for the id assigned to this word,
-        #          store it in the word id cache, and return the id.
-        # Check if the word is already in the lexicon (shouldn't happen without the cache, but for safety)
-        for word_id, lexicon_word in self.lexicon.items():
-            if lexicon_word == word:
-                # Step 3: Cache the word ID for future use
-                self._word_id_cache[word] = word_id
-                return word_id
-        
-        word_id = self._mock_insert_word(word)
-        self.lexicon[word_id] = word  # Add the word to the lexicon
+        self.cursor.execute(
+            "SELECT id FROM lexicon WHERE word = %s",
+            (word,)
+        )
+        result = self.cursor.fetchone()
+
+        if result:
+            word_id = result[0]
+        else:
+            self.cursor.execute(
+                "SELECT COALESCE(MAX(id), 0) + 1 FROM lexicon"
+            )
+            word_id = self.cursor.fetchone()[0]
+
+            self.cursor.execute(
+                "INSERT INTO lexicon (id, word) VALUES (%s, %s)",
+                (word_id, word)
+            )
+
         self._word_id_cache[word] = word_id
+        self.lexicon[word_id] = word
         return word_id
 
     def document_id(self, url):
-        """Get the document id for some url."""
+        """Get or create a document ID in PostgreSQL."""
+
         if url in self._doc_id_cache:
             return self._doc_id_cache[url]
 
-        # TODO: just like word id cache, but for documents. if the document
-        #       doesn't exist in the db then only insert the url and leave
-        #       the rest to their defaults.
+        self.cursor.execute(
+            "SELECT id FROM document_index WHERE url = %s",
+            (url,)
+        )
+        result = self.cursor.fetchone()
 
-        doc_id = self._mock_insert_document(url)
+        if result:
+            doc_id = result[0]
+        else:
+            self.cursor.execute(
+                "SELECT COALESCE(MAX(id), 0) + 1 FROM document_index"
+            )
+            doc_id = self.cursor.fetchone()[0]
+
+            self.cursor.execute(
+                "INSERT INTO document_index (id, url) VALUES (%s, %s)",
+                (doc_id, url)
+            )
+
         self._doc_id_cache[url] = doc_id
+        self.document_index[doc_id] = url
         return doc_id
 
     def _fix_url(self, curr_url, rel):
@@ -200,23 +308,40 @@ class crawler(object):
         # TODO update document title for document id self._curr_doc_id
 
     def _visit_a(self, elem):
-        """Called when visiting <a> tags."""
+        """Process hyperlinks without adding duplicate URLs."""
 
-        dest_url = self._fix_url(self._curr_url, attr(elem, "href"))
+        href = attr(elem, "href").strip()
 
-        # print "href="+repr(dest_url), \
-        #      "title="+repr(attr(elem,"title")), \
-        #      "alt="+repr(attr(elem,"alt")), \
-        #      "text="+repr(self._text_of(elem))
+        # Ignore empty links and non-web URLs
+        if not href or href.startswith(("#", "mailto:", "javascript:", "tel:")):
+            return
 
-        # add the just found URL to the url queue
-        self._url_queue.append((dest_url, self._curr_depth))
+        dest_url = self._fix_url(self._curr_url, href)
 
-        # add a link entry into the database from the current document to the
-        # other document
-        self.add_link(self._curr_doc_id, self.document_id(dest_url))
+        if not dest_url or dest_url == self._curr_url:
+            return
 
-        # TODO add title/alt/text to index for destination url
+        parsed = urlparse(dest_url)
+
+        if parsed.scheme not in ("http", "https") or not parsed.netloc:
+            return
+
+        # Record the link for PageRank
+        from_doc_id = self._curr_doc_id
+        to_doc_id = self.document_id(dest_url)
+
+        if to_doc_id not in self.graph[from_doc_id]:
+            self.graph[from_doc_id].append(to_doc_id)
+
+        # Only queue URLs within the crawl depth limit
+        next_depth = self._curr_depth
+
+        if (
+            next_depth <= self.max_depth
+            and dest_url not in self.queued_urls
+        ):
+            self._url_queue.append((dest_url, next_depth))
+            self.queued_urls.add(dest_url)
 
     def _add_words_to_document(self):
         # TODO: knowing self._curr_doc_id and the list of all words and their
@@ -320,18 +445,25 @@ class crawler(object):
             resolved_index[word] = urls
         return resolved_index
 
-    def crawl(self, depth=2, timeout=3):
+    def crawl(self, depth=2, timeout=3, max_pages = 50):
         """Crawl the web!"""
+        self.max_depth = depth
         seen = set()
+        pages_crawled = 0
 
         while len(self._url_queue):
+            if pages_crawled >= max_pages:
+                print(f"Reached crawl limit of {max_pages} pages.")
+                break
 
             url, depth_ = self._url_queue.pop()
-
-            # skip this url; it's too deep
+            
+           
             if depth_ > depth:
                 continue
-
+            
+            print(f"Crawling: {url}, Depth: {depth_}")
+            
             doc_id = self.document_id(url)
 
             # we've already seen this document
@@ -352,6 +484,7 @@ class crawler(object):
                 self._curr_words = []
                 self._index_document(soup)
                 self._add_words_to_document()
+                pages_crawled += 1
                 print("    url=" + repr(self._curr_url))
 
 
@@ -360,7 +493,98 @@ class crawler(object):
                 pass
 
 
+def page_rank(links, num_iterations=20, initial_pr=1.0, damping_factor=0.85):
 
+    # Initialize PageRank scores and link data structures
+    page_rank = defaultdict(lambda: float(initial_pr))
+    num_outgoing_links = defaultdict(float)
+    incoming_link_sets = defaultdict(set)
+
+    # Populate link data structures
+    for from_id, to_id in links:
+        num_outgoing_links[from_id] += 1.0
+        incoming_link_sets[to_id].add(from_id)
+
+    # Identify all unique nodes
+    all_nodes = set(num_outgoing_links.keys()).union(set(incoming_link_sets.keys()))
+    
+    # Handle dangling nodes
+    for node in all_nodes:
+        if node not in num_outgoing_links:
+            num_outgoing_links[node] = 0
+
+    num_documents = len(all_nodes)
+    if num_documents == 0:
+        return {}
+
+    lead = (1.0 - damping_factor) / num_documents
+
+    for _ in range(num_iterations):
+        new_page_rank = defaultdict(float)
+
+        # Compute contributions from incoming links
+        for node in all_nodes:
+            tail = 0.0
+            if node in incoming_link_sets:
+                for incoming in incoming_link_sets[node]:
+                    if num_outgoing_links[incoming] > 0:  # Avoid division by zero
+                        tail += damping_factor * (page_rank[incoming] / num_outgoing_links[incoming])
+                    else:
+                        print(f"Warning: Dangling node {incoming} detected.")
+            new_page_rank[node] = lead + tail
+
+        # Redistribute PageRank from dangling nodes
+        dangling_sum = sum(page_rank[node] for node in all_nodes if num_outgoing_links[node] == 0)
+        dangling_contribution = damping_factor * (dangling_sum / num_documents)
+        for node in all_nodes:
+            new_page_rank[node] += dangling_contribution
+
+        # Debugging output to detect anomalies
+        print(f"Iteration completed. Dangling contribution: {dangling_contribution}")
+
+        page_rank = new_page_rank
+
+    return dict(page_rank)
+
+
+
+
+
+def store_pagerank_scores(db_conn, pagerank_scores):
+    """Save PageRank scores to PostgreSQL."""
+
+    with db_conn.cursor() as cursor:
+        for doc_id, score in pagerank_scores.items():
+            cursor.execute(
+                """
+                INSERT INTO pagerank (document_id, score)
+                VALUES (%s, %s)
+                ON CONFLICT (document_id)
+                DO UPDATE SET score = EXCLUDED.score
+                """,
+                (doc_id, float(score))
+            )
+
+    db_conn.commit()
+    print("PageRank scores saved to PostgreSQL!")
+  
+    
 if __name__ == "__main__":
-    bot = crawler(None, "urls.txt")
-    bot.crawl(depth=1)
+    url_file = "url.txt"  # Path to file containing seed URLs
+    depth = 1                   # Crawling depth
+    timeout = 10                # Request timeout in seconds
+    iterations = 20             # Number of iterations for PageRank computation
+
+    # Connect to PostgreSQL
+    db_conn = get_connection()
+
+    try:
+        # Initialize the crawler
+        web_crawler = crawler(db_conn, url_file)
+        
+        # Start crawling
+        print(f"Starting crawl with depth={depth}, timeout={timeout}s")
+        web_crawler.crawl(depth=depth, timeout=timeout)
+        
+        # Save crawled data to the database
+        print("Saving crawled data to d
